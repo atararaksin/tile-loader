@@ -62,7 +62,7 @@ object TileLoader extends App with StrictLogging {
   val keys = for {
     x <- (keyBounds.colMin to keyBounds.colMax).toStream
     y <- (keyBounds.rowMin to keyBounds.rowMax).toStream
-    key = SpatialKey(x, y) if (keyIsInBounds(key, geomBounds) && !Files.exists(getTilePath(key)))
+    key = SpatialKey(x, y) if (keyIsInBounds(key, geomBounds))
   } yield key
 
   def downloadTile(key: SpatialKey) = {
@@ -97,9 +97,11 @@ object TileLoader extends App with StrictLogging {
   def batchDownload(keys: Stream[SpatialKey], batchSize: Int): Unit = {
     if (!keys.isEmpty) {
       val (batch, tail) = keys.splitAt(batchSize)
-      batch.traverse(downloadTile).onComplete {
-        case _ => batchDownload(tail, batchSize)
-      }
+      batch.filterNot(k => Files.exists(getTilePath(k)))
+        .traverse(downloadTile)
+        .onComplete {
+          case _ => batchDownload(tail, batchSize)
+        }
     }
   }
 
