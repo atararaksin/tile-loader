@@ -91,7 +91,7 @@ object TileLoader extends App {
 
   system.scheduler.schedule(
     0 seconds,
-    60 seconds,
+    300 seconds,
     () => println(s"${LocalDateTime.now()} Current amount of tiles loaded: ${Files.list(targetPath).count()}")
   )
 }
