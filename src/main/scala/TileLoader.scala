@@ -18,10 +18,11 @@ import akka.http.scaladsl.client.RequestBuilding._
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.scaladsl.{FileIO, Sink, Source}
 import cats.implicits._
+import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.duration._
 
-object TileLoader extends App {
+object TileLoader extends App with StrictLogging {
   implicit val system = ActorSystem("tile-loader")
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
@@ -85,13 +86,13 @@ object TileLoader extends App {
       .runWith(Sink.foreach(writeFile(getTilePath(key))))
   }
 
-  println(s"Starting to download tiles from $tileUrl to $targetPath")
+  logger.info(s"Starting to download tiles from $tileUrl to $targetPath")
 
   keys.traverse(loadTile)
 
   system.scheduler.schedule(
     0 seconds,
     300 seconds,
-    () => println(s"${LocalDateTime.now()} Current amount of tiles loaded: ${Files.list(targetPath).count()}")
+    () => logger.info(s"${LocalDateTime.now()} Current amount of tiles loaded: ${Files.list(targetPath).count()}")
   )
 }

@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-spray-json" % "10.1.8",
   "com.typesafe.akka" %% "akka-stream" % "2.5.23",
   "com.typesafe.akka" %% "akka-actor" % "2.5.23",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
   "org.locationtech.geotrellis" %% "geotrellis-spark" % "3.0.0-M3",
   "org.locationtech.geotrellis" %% "geotrellis-s3" % "3.0.0-M3",
   "org.scalatest" %% "scalatest" % "3.0.8" % Test
