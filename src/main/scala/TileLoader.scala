@@ -1,7 +1,5 @@
 package io.geoalert.tileloader
 
-import java.nio.file.{Files, Path, Paths}
-import java.time.LocalDateTime
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -91,7 +89,7 @@ object TileLoader extends App with StrictLogging {
   system.scheduler.schedule(
     0 seconds,
     300 seconds,
-    () => logger.info(s"${LocalDateTime.now()} Current amount of tiles loaded: ${Files.list(targetPath).count()}")
+    () => logger.info(s"Current amount of tiles loaded: ${Files.list(targetPath).count()}")
   )
 
   keys.traverse(loadTile)
