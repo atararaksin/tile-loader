@@ -1,6 +1,7 @@
 package io.geoalert.tileloader
 
 import java.nio.file.{Files, Path, Paths}
+import java.time.LocalDateTime
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -17,6 +18,8 @@ import akka.http.scaladsl.client.RequestBuilding._
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.scaladsl.{FileIO, Sink, Source}
 import cats.implicits._
+
+import scala.concurrent.duration._
 
 object TileLoader extends App {
   implicit val system = ActorSystem("tile-loader")
@@ -85,4 +88,10 @@ object TileLoader extends App {
   println(s"Starting to download tiles from $tileUrl to $targetPath")
 
   keys.traverse(loadTile)
+
+  system.scheduler.schedule(
+    0 seconds,
+    60 seconds,
+    () => println(s"${LocalDateTime.now()} Current amount of tiles loaded: ${Files.list(targetPath).count()}")
+  )
 }
