@@ -16,6 +16,7 @@ import geotrellis.vector.io.json._
 import akka.http.scaladsl.client.RequestBuilding._
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.scaladsl.{FileIO, Sink, Source}
+import cats.implicits._
 
 object TileLoader extends App {
   implicit val system = ActorSystem("tile-loader")
@@ -49,7 +50,7 @@ object TileLoader extends App {
   val keyBounds = layout.mapTransform.extentToBounds(extent)
 
   def getTilePath(key: SpatialKey) =
-    targetPath.resolve(s"${key.col}-${key.col}.jpg")
+    targetPath.resolve(s"${key.col}-${key.row}.jpg")
 
   def keyIsInBounds(key: SpatialKey, bounds: MultiPolygon) =
     bounds.intersects(key.extent(layout))
@@ -80,4 +81,8 @@ object TileLoader extends App {
       .map(responseOrFail)
       .runWith(Sink.foreach(writeFile(getTilePath(key))))
   }
+
+  println(s"Starting to download tiles from $tileUrl to $targetPath")
+
+  keys.traverse(loadTile)
 }
