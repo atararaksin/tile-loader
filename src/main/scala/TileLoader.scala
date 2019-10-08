@@ -41,10 +41,8 @@ object TileLoader extends App {
       case _ => List[Polygon]()
     }
     .map(_.reproject(LatLng, WebMercator))
-  val extent = geomBounds.reduceLeft(_ union _)
-    .toGeometry()
-    .map(_.envelope)
-    .getOrElse(sys.error("Unable to calculate extent for the target bounds."))
+    .toMultiPolygon()
+  val extent = geomBounds.envelope
 
   val layout = ZoomedLayoutScheme(WebMercator).levelForZoom(z).layout
 
@@ -53,8 +51,8 @@ object TileLoader extends App {
   def getTilePath(key: SpatialKey) =
     targetPath.resolve(s"${key.col}-${key.col}.jpg")
 
-  def keyIsInBounds(key: SpatialKey, bounds: Seq[Polygon]) =
-    bounds.exists(key.extent(layout).toPolygon().intersects(_))
+  def keyIsInBounds(key: SpatialKey, bounds: MultiPolygon) =
+    bounds.intersects(key.extent(layout))
 
   val keys = for {
     x <- (keyBounds.colMin to keyBounds.colMax).toStream
