@@ -39,8 +39,8 @@ object TileLoader extends App with StrictLogging {
     .parseGeoJson[JsonFeatureCollection]()
     .getAllGeometries()
     .flatMap {
-      case p: Polygon =>  List(p)
-      case m: MultiPolygon =>  m.polygons.toList
+      case p: Polygon => List(p)
+      case m: MultiPolygon => m.polygons.toList
       case _ => List[Polygon]()
     }
     .map(_.reproject(LatLng, WebMercator))
@@ -63,7 +63,7 @@ object TileLoader extends App with StrictLogging {
     key = SpatialKey(x, y) if (keyIsInBounds(key, geomBounds) && !Files.exists(getTilePath(key)))
   } yield key
 
-  def loadTile(key: SpatialKey) = {
+  def downloadTile(key: SpatialKey) = {
     val url = tileUrl.replace("{z}", z.toString)
       .replace("{x}", key.col.toString)
       .replace("{y}", key.row.toString)
@@ -73,7 +73,7 @@ object TileLoader extends App with StrictLogging {
       case _ => sys.error(s"Unable to download from $url")
     }
 
-    def writeFile(dst: Path)(httpResponse : HttpResponse) =
+    def writeFile(dst: Path)(httpResponse: HttpResponse) =
       httpResponse.entity.dataBytes.runWith(FileIO.toPath(dst))
 
     val requestResponseFlow = Http().superPool[Unit](settings = conSettings)
@@ -92,5 +92,14 @@ object TileLoader extends App with StrictLogging {
     () => logger.info(s"Current amount of tiles loaded: ${Files.list(targetPath).count()}")
   )
 
-  keys.traverse(loadTile)
+  def batchDownload(keys: Stream[SpatialKey], batchSize: Int): Unit = {
+    if (!keys.isEmpty) {
+      val (batch, tail) = keys.splitAt(batchSize)
+      batch.traverse(downloadTile).onComplete {
+        case _ => batchDownload(tail, batchSize)
+      }
+    }
+  }
+
+  batchDownload(keys, 1000)
 }
