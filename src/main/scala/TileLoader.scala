@@ -88,11 +88,11 @@ object TileLoader extends App with StrictLogging {
 
   logger.info(s"Starting to download tiles from $tileUrl to $targetPath")
 
-  keys.traverse(loadTile)
-
   system.scheduler.schedule(
     0 seconds,
     300 seconds,
     () => logger.info(s"${LocalDateTime.now()} Current amount of tiles loaded: ${Files.list(targetPath).count()}")
   )
+
+  keys.traverse(loadTile)
 }
