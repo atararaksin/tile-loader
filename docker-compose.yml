@@ -4,6 +4,7 @@ services:
   tile-cache:
     build: .
     environment:
+    - JAVA_OPTS=-Xms2g -Xmx4g
     - TILE_URL=http://10.1.6.1:8800/api/tiles?proxy=true&url=http://mt0.google.com/vt/lyrs=s%26hl=en%26x={x}%26y={y}%26z={z}%26s=Ga
     volumes:
     - ./src:/tile-loader/src

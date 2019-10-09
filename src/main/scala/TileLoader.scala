@@ -102,5 +102,5 @@ object TileLoader extends App with StrictLogging {
     }
   }
 
-  batchDownload(keys, 1000)
+  batchDownload(keys, 100)
 }
