@@ -78,10 +78,13 @@ object TileLoader extends App with StrictLogging {
 
     val requestResponseFlow = Http().superPool[Unit](settings = conSettings)
 
+    val path = getTilePath(key, n)
+    path.getParent.toFile.mkdirs()
+
     Source.single((Get(url), ()))
       .via(requestResponseFlow)
       .map(responseOrFail)
-      .runWith(Sink.foreach(writeFile(getTilePath(key, n))))
+      .runWith(Sink.foreach(writeFile(path)))
   }
 
   logger.info(s"Starting to download tiles from $tileUrl to $targetPath")
