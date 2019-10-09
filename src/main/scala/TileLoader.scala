@@ -30,7 +30,7 @@ object TileLoader extends App with StrictLogging {
   val conSettings = ConnectionPoolSettings(system).withMaxRetries(5)
 
   val z = sys.env.getOrElse("ZOOM", "14").toInt
-  val targetPath = Paths.get(sys.env.getOrElse("TARGET_PATH", "/tile-loader/tiles"))
+  val targetPath = Paths.get(sys.env.getOrElse("TARGET_PATH", "/tile-loader/tiles/0-1"))
   val tileUrl = sys.env("TILE_URL")
 
   targetPath.toFile.mkdirs()
@@ -56,14 +56,11 @@ object TileLoader extends App with StrictLogging {
   def getTilePath(key: SpatialKey) =
     targetPath.resolve(s"${key.col}-${key.row}.jpg")
 
-  def keyIsInBounds(key: SpatialKey, bounds: MultiPolygon) =
-    bounds.intersects(key.extent(layout))
-
-  val keys = for {
-    x <- (keyBounds.colMin to keyBounds.colMax).toStream
-    y <- (keyBounds.rowMin to keyBounds.rowMax).toStream
-    key = SpatialKey(x, y) if (keyIsInBounds(key, geomBounds))
-  } yield key
+  val keys = layout.mapTransform
+    .keysForGeometry(geomBounds)
+    .toList
+    .sorted
+    .slice(0, 1000000)
 
   def downloadTile(key: SpatialKey) = {
     val url = tileUrl.replace("{z}", z.toString)
@@ -94,7 +91,7 @@ object TileLoader extends App with StrictLogging {
     () => logger.info(s"Current amount of tiles loaded: ${Files.list(targetPath).count()}")
   )
 
-  def batchDownload(keys: Stream[SpatialKey], batchSize: Int): Unit = {
+  def batchDownload(keys: List[SpatialKey], batchSize: Int): Unit = {
     if (!keys.isEmpty) {
       val (batch, tail) = keys.splitAt(batchSize)
       batch.filterNot(k => Files.exists(getTilePath(k)))
