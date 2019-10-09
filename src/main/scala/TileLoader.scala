@@ -30,8 +30,9 @@ object TileLoader extends App with StrictLogging {
   val conSettings = ConnectionPoolSettings(system).withMaxRetries(5)
 
   val z = sys.env.getOrElse("ZOOM", "14").toInt
-  val targetPath = Paths.get(sys.env.getOrElse("TARGET_PATH", "/tile-loader/tiles/0-1"))
+  val targetPath = Paths.get(sys.env.getOrElse("TARGET_PATH", "/tile-loader/tiles"))
   val tileUrl = sys.env("TILE_URL")
+  val sliceSize = 1000000
 
   targetPath.toFile.mkdirs()
 
@@ -53,16 +54,16 @@ object TileLoader extends App with StrictLogging {
 
   val keyBounds = layout.mapTransform.extentToBounds(extent)
 
-  def getTilePath(key: SpatialKey) =
-    targetPath.resolve(s"${key.col}-${key.row}.jpg")
+  def getTilePath(key: SpatialKey, n: Int) =
+    targetPath.resolve((n / sliceSize).toString).resolve(s"${key.col}-${key.row}.jpg")
 
   val keys = layout.mapTransform
     .keysForGeometry(geomBounds)
     .toList
     .sorted
-    .slice(0, 1000000)
+    .zipWithIndex
 
-  def downloadTile(key: SpatialKey) = {
+  def downloadTile(key: SpatialKey, n: Int) = {
     val url = tileUrl.replace("{z}", z.toString)
       .replace("{x}", key.col.toString)
       .replace("{y}", key.row.toString)
@@ -80,7 +81,7 @@ object TileLoader extends App with StrictLogging {
     Source.single((Get(url), ()))
       .via(requestResponseFlow)
       .map(responseOrFail)
-      .runWith(Sink.foreach(writeFile(getTilePath(key))))
+      .runWith(Sink.foreach(writeFile(getTilePath(key, n))))
   }
 
   logger.info(s"Starting to download tiles from $tileUrl to $targetPath")
@@ -91,11 +92,11 @@ object TileLoader extends App with StrictLogging {
     () => logger.info(s"Current amount of tiles loaded: ${Files.list(targetPath).count()}")
   )
 
-  def batchDownload(keys: List[SpatialKey], batchSize: Int): Unit = {
+  def batchDownload(keys: List[(SpatialKey, Int)], batchSize: Int): Unit = {
     if (!keys.isEmpty) {
       val (batch, tail) = keys.splitAt(batchSize)
-      batch.filterNot(k => Files.exists(getTilePath(k)))
-        .traverse(downloadTile)
+      batch.filterNot(e => Files.exists(getTilePath(e._1, e._2)))
+        .traverse(e => downloadTile(e._1, e._2))
         .onComplete {
           case _ => batchDownload(tail, batchSize)
         }
