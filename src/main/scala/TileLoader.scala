@@ -16,7 +16,6 @@ import scala.util.{Success, Try}
 import geotrellis.vector._
 import geotrellis.vector.io.json._
 import akka.http.scaladsl.client.RequestBuilding._
-import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.scaladsl.{FileIO, Sink, Source}
 import cats.implicits._
 import com.typesafe.scalalogging.StrictLogging
@@ -28,8 +27,6 @@ object TileLoader extends App with StrictLogging {
   implicit val system = ActorSystem("tile-loader")
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
-
-  val conSettings = ConnectionPoolSettings(system).withMaxRetries(5)
 
   val z = sys.env.getOrElse("ZOOM", "14").toInt
   val targetPath = Paths.get(sys.env.getOrElse("TARGET_PATH", "/tile-loader/tiles"))
@@ -81,7 +78,7 @@ object TileLoader extends App with StrictLogging {
       def writeFile(dst: Path)(httpResponse: HttpResponse) =
         httpResponse.entity.dataBytes.runWith(FileIO.toPath(dst))
 
-      val requestResponseFlow = Http().superPool[Unit](settings = conSettings)
+      val requestResponseFlow = Http().superPool[Unit]()
 
       val path = getTilePath(key, n)
       path.getParent.toFile.mkdirs()
@@ -108,12 +105,12 @@ object TileLoader extends App with StrictLogging {
     if (!keys.isEmpty) {
       val (batch, tail) = keys.splitAt(batchSize)
       batch.filterNot(e => Files.exists(getTilePath(e._1, e._2)))
-        .traverse(e => downloadTile(e._1, e._2, 5))
+        .traverse(e => downloadTile(e._1, e._2, 2))
         .onComplete {
           case _ => batchDownload(tail, batchSize)
         }
     }
   }
 
-  batchDownload(keys, 256)
+  batchDownload(keys, 64)
 }
