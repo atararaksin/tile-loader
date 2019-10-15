@@ -20,6 +20,7 @@ import akka.stream.scaladsl.{FileIO, Sink, Source}
 import cats.implicits._
 import com.typesafe.scalalogging.StrictLogging
 
+import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
@@ -101,16 +102,26 @@ object TileLoader extends App with StrictLogging {
     }
   )
 
-  def batchDownload(keys: List[(SpatialKey, Int)], batchSize: Int): Unit = {
-    if (!keys.isEmpty) {
-      val (batch, tail) = keys.splitAt(batchSize)
-      batch.filterNot(e => Files.exists(getTilePath(e._1, e._2)))
-        .traverse(e => downloadTile(e._1, e._2, 2))
-        .onComplete {
-          case _ => batchDownload(tail, batchSize)
+  type KeyIndexes = List[(SpatialKey, Int)]
+  def batchDownload(keys: KeyIndexes, batchSize: Int): Unit = {
+    @tailrec
+    def take(keys: KeyIndexes, acc: List[Future[Done]]): (KeyIndexes, List[Future[Done]]) =
+      if (acc.size == batchSize || keys.isEmpty) (keys, acc)
+      else {
+        if (keys.head._2 % 10000 == 0) println(s"Currently on position ${keys.head._2}: ${keys.head._1}")
+        keys match {
+          case k::tail if Files.exists(getTilePath(k._1, k._2)) => take(tail, acc)
+          case k::tail => take(tail, downloadTile(k._1, k._2, 3)::acc)
         }
+      }
+
+    if (!keys.isEmpty) {
+      val (tail, futures) = take(keys, List())
+      futures.sequence.onComplete {
+        case _ => batchDownload(tail, batchSize)
+      }
     }
   }
 
-  batchDownload(keys, 64)
+  batchDownload(keys, 32)
 }
