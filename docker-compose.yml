@@ -5,18 +5,13 @@ services:
     build: .
     environment:
     - JAVA_OPTS=-Xms2g -Xmx4g
-    - TILE_URL=http://10.1.6.1:8800/api/tiles?proxy=true&url=http://mt0.google.com/vt/lyrs=s%26hl=en%26x={x}%26y={y}%26z={z}%26s=Ga
+    - TILE_URL=http://10.1.6.2:8800/api/tiles?proxy=true&url=http://mt0.google.com/vt/lyrs=s%26hl=en%26x={x}%26y={y}%26z={z}%26s=Ga
     scale: 2
     restart: always
     volumes:
     - ./src:/tile-loader/src
     - sbt-cache:/root/.ivy2
-    - tiles:/tile-loader/tiles
+    - /aerostor/raid5/data_rw/docker_volumes/tile-loader:/tile-loader/tiles
 
 volumes:
   sbt-cache:
-  tiles:
-    driver_opts:
-      type: none
-      device: "/aerostor/raid5/docker_volumes/tile-loader"
-      o: bind
